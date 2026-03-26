@@ -1,0 +1,11 @@
+# Ignore VS Code settings
+.vscode/
+
+# Ignore /data directory
+/data/
+
+# Ignore __pycache__ directories
+/__pycache__/
+
+# Ignore .log files
+*.log
