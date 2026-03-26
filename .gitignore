@@ -12,3 +12,6 @@
 
 #Ignore temp files
 *.tmp
+
+Ignore model files
+/model.pth  

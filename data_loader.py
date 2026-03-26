@@ -1,55 +1,51 @@
 import pandas as pd
-import torch
-from torch.utils.data import Dataset, DataLoader
-import torch.nn.functional as F
 
-class TimeSeriesDataset(Dataset):
-    def __init__(self, csv_path, seq_len=10):
-        self.seq_len = seq_len
-        self.vocab_size = 50  # 0 to 49, since max label is 49
-        
-        # Read CSV
-        self.data = pd.read_csv(csv_path)
-        # Convert date to datetime and sort
-        self.data['date'] = pd.to_datetime(self.data['date'])
-        self.data = self.data.sort_values('date').reset_index(drop=True)
-        
-        # Extract features: d1 to d7 as integers
-        self.features = self.data[['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']].values.astype(int)
-        
-    def __len__(self):
-        return len(self.features) - self.seq_len
-    
-    def __getitem__(self, idx):
-        # Get sequence of seq_len consecutive time steps
-        seq = self.features[idx:idx + self.seq_len]  # (seq_len, 7)
-        # Get target: next time step
-        target = self.features[idx + self.seq_len]  # (7,)
-        
-        # One-hot encode sequence
-        seq_onehot = []
-        for row in seq:
-            row_onehot = F.one_hot(torch.tensor(row), num_classes=self.vocab_size)  # (7, 50)
-            seq_onehot.append(row_onehot)
-        input_tensor = torch.stack(seq_onehot)  # (seq_len, 7, 50)
-        
-        # One-hot encode target
-        target_tensor = F.one_hot(torch.tensor(target), num_classes=self.vocab_size)  # (7, 50)
-        
-        return input_tensor, target_tensor
+def load_data(file_path, date_col='date', value_cols=['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']):
+    """
+    Load the CSV data, sort by date, and return list of observations.
+    Each observation is a list of 7 integers.
+    """
+    df = pd.read_csv(file_path)
+    df[date_col] = pd.to_datetime(df[date_col])
+    df = df.sort_values(date_col)
+    data = df[value_cols].values.tolist()
+    return data
 
-# Example usage
+def create_sequences(data, seq_len):
+    """
+    Create sequences of length seq_len * 7 tokens and corresponding targets.
+    """
+    sequences = []
+    targets = []
+    for i in range(len(data) - seq_len):
+        seq = []
+        for j in range(seq_len):
+            seq.extend(data[i + j])
+        target = data[i + seq_len]
+        sequences.append(seq)
+        targets.append(target)
+    return sequences, targets
+
+def split_data(sequences, targets, train_ratio=0.7, val_ratio=0.2):
+    """
+    Split sequences and targets into train, val, test.
+    """
+    total = len(sequences)
+    train_end = int(total * train_ratio)
+    val_end = train_end + int(total * val_ratio)
+    train_seq = sequences[:train_end]
+    train_tar = targets[:train_end]
+    val_seq = sequences[train_end:val_end]
+    val_tar = targets[train_end:val_end]
+    test_seq = sequences[val_end:]
+    test_tar = targets[val_end:]
+    return (train_seq, train_tar), (val_seq, val_tar), (test_seq, test_tar)
+
 if __name__ == "__main__":
-    dataset = TimeSeriesDataset('data/data_all_l649.csv', seq_len=10)
-    print(f"Dataset length: {len(dataset)}")
-    sample_input, sample_target = dataset[0]
-    print(f"Input shape: {sample_input.shape}")  # Should be (10, 7, 50)
-    print(f"Target shape: {sample_target.shape}")  # Should be (7, 50)
-    
-    # Create DataLoader
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
-    for batch in dataloader:
-        batch_input, batch_target = batch
-        print(f"Batch input shape: {batch_input.shape}")  # (4, 10, 7, 50)
-        print(f"Batch target shape: {batch_target.shape}")  # (4, 7, 50)
-        break
+    data = load_data('data/data_all_l649.csv')
+    print("Data length:", len(data))
+    print("First observation:", data[0])
+    sequences, targets = create_sequences(data, 10)
+    print("Sequences length:", len(sequences))
+    print("First sequence length:", len(sequences[0]))
+    print("First target:", targets[0])

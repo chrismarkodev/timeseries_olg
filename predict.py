@@ -11,6 +11,9 @@ num_layers = 6
 vocab_size = 51
 model_path = 'model.pth'
 
+# Device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 # Load data
 data = load_data(file_path)
 
@@ -21,11 +24,12 @@ last_seq = data[-seq_len:]
 input_seq = []
 for obs in last_seq:
     input_seq.extend(obs)
-input_tensor = torch.tensor([input_seq], dtype=torch.long)
+input_tensor = torch.tensor([input_seq], dtype=torch.long).to(device)
 
 # Load model
 model = Seq2SeqTransformer(vocab_size=vocab_size, embed_size=embed_size, num_heads=num_heads, num_layers=num_layers)
 model.load_state_dict(torch.load(model_path))
+model = model.to(device)
 model.eval()
 
 # Predict
