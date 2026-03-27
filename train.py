@@ -1,4 +1,4 @@
-from data_loader import load_data, create_sequences, split_data
+from data_loader import load_data, create_sequences, split_data, get_value_mapping, encode_data
 from model import Seq2SeqTransformer
 import torch
 import torch.nn as nn
@@ -14,16 +14,20 @@ num_layers = 6
 batch_size = 32
 epochs = 100
 lr = 1e-4
-start_token = 50
-vocab_size = 51
 
 # Device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f'Using device: {device}')
 
 # Load data
-data = load_data(file_path)
-sequences, targets = create_sequences(data, seq_len)
+raw_data = load_data(file_path)
+value2idx, idx2value = get_value_mapping(raw_data)
+encoded_data = encode_data(raw_data, value2idx)
+
+vocab_size = len(value2idx) + 2  # data tokens + start token reserved
+start_token = len(value2idx) + 1
+
+sequences, targets = create_sequences(encoded_data, seq_len)
 (train_seq, train_tar), (val_seq, val_tar), (test_seq, test_tar) = split_data(sequences, targets)
 
 # Convert to tensors

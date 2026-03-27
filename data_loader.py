@@ -11,6 +11,28 @@ def load_data(file_path, date_col='date', value_cols=['d1', 'd2', 'd3', 'd4', 'd
     data = df[value_cols].values.tolist()
     return data
 
+
+def get_value_mapping(data):
+    """Build value <-> token index mapping with reserved start token.
+
+    Maps raw values to 1..N, reserve 0 for pad/unused and start token for the sequence fill.
+    """
+    all_values = sorted({val for row in data for val in row})
+    value2idx = {v: i + 1 for i, v in enumerate(all_values)}
+    idx2value = {i + 1: v for i, v in enumerate(all_values)}
+    return value2idx, idx2value
+
+
+def encode_data(data, value2idx):
+    """Encode numeric series data to token ids."""
+    return [[value2idx[v] for v in row] for row in data]
+
+
+def decode_observation(token_row, idx2value):
+    """Decode token ids back to numeric values."""
+    return [idx2value[t] for t in token_row]
+
+
 def create_sequences(data, seq_len):
     """
     Create sequences of length seq_len * 7 tokens and corresponding targets.
